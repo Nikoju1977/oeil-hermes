@@ -1,5 +1,5 @@
 /* L'Œil d'Hermès — service worker. Coquille en cache, réseau uniquement pour les API. */
-var VERSION = "oeil-hermes-v1";
+var VERSION = "oeil-hermes-v2";
 var COQUILLE = [
   "./",
   "./index.html",
@@ -11,7 +11,11 @@ var COQUILLE = [
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) {
     return c.addAll(COQUILLE);
-  }).then(function () { return self.skipWaiting(); }));
+  }));
+});
+
+self.addEventListener("message", function (e) {
+  if (e.data && e.data.action === "passer") self.skipWaiting();
 });
 
 self.addEventListener("activate", function (e) {
