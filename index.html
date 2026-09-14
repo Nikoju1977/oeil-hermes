@@ -155,6 +155,22 @@ body[data-vue="theme"] .decompte,body[data-vue="theme"] .index{display:none}
 body[data-vue="theme"] .theme{display:block}
 body[data-vue="fiche"] .onglets{display:none}
 .langues{display:flex;justify-content:center}
+.bandeau{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(1rem + env(safe-area-inset-bottom));z-index:20;
+  display:flex;align-items:center;gap:.7rem;
+  background:var(--ombre);border:1px solid var(--trait);border-left:2px solid var(--or);
+  border-radius:3px;padding:.7rem 1rem;color:var(--velin);box-shadow:0 8px 30px rgba(0,0,0,.5);
+}
+.graphe{display:none}
+body[data-vue="graphe"] .champ,body[data-vue="graphe"] .voies,
+body[data-vue="graphe"] .decompte,body[data-vue="graphe"] .index{display:none}
+body[data-vue="graphe"] .graphe{display:block}
+.graphe .intro{max-width:34rem;margin:1.6rem auto .8rem;text-align:center;color:var(--velin-bas);font-style:italic}
+#toile{width:100%;height:60vh;min-height:20rem;display:block;touch-action:manipulation;cursor:pointer}
+.legende{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;margin:.6rem 0 .4rem}
+.legende span{display:inline-flex;align-items:center;gap:.35rem;color:var(--velin-bas);font-size:.95rem}
+.legende i{width:.6rem;height:.6rem;border-radius:50%;display:inline-block}
 .theme .intro{max-width:38rem;margin:1.6rem auto 0;text-align:center;color:var(--velin-bas);font-style:italic}
 .formulaire{
   max-width:38rem;margin:1.6rem auto 0;display:grid;gap:.9rem;
@@ -216,6 +232,7 @@ footer{text-align:center;color:#57525f;font-size:.9rem;font-style:italic;padding
   <nav class="onglets" role="tablist" aria-label="Sections">
     <button class="onglet" id="ong-index" type="button" role="tab" aria-selected="true" data-t="ongletIndex">Le grimoire</button>
     <button class="onglet" id="ong-theme" type="button" role="tab" aria-selected="false" data-t="ongletTheme">Thème et nombres</button>
+    <button class="onglet" id="ong-graphe" type="button" role="tab" aria-selected="false" data-t="ongletGraphe">Le graphe</button>
   </nav>
 
   <div class="champ">
@@ -234,6 +251,9 @@ footer{text-align:center;color:#57525f;font-size:.9rem;font-style:italic;padding
     <p class="intro" data-t="themeIntro">Les nombres et les positions sont calculés ici même, sans réseau. Seule la lecture interprétée fait appel à un modèle, et seulement si vous fournissez une clé.</p>
 
     <div class="formulaire">
+      <label class="champ-l"><span data-t="lVille">Lieu de naissance</span>
+        <input type="text" id="t-ville" list="villes" autocomplete="off" data-tp="phVille" placeholder="Nantes, Berlin, Montréal…">
+        <datalist id="villes"></datalist></label>
       <label class="champ-l"><span data-t="lDate">Date de naissance</span><input type="date" id="t-date"></label>
       <label class="champ-l"><span data-t="lHeure">Heure locale (facultative)</span><input type="time" id="t-heure"></label>
       <label class="champ-l"><span data-t="lUtc">Décalage UTC à la naissance</span><input type="number" id="t-utc" step="0.5" min="-12" max="14" placeholder="ex. 1 ou 2"></label>
@@ -242,9 +262,12 @@ footer{text-align:center;color:#57525f;font-size:.9rem;font-style:italic;padding
       <div class="agir">
         <button class="sceller" id="calculer" type="button" data-t="bCalculer">Calculer</button>
         <button class="discret" id="lire" type="button" data-t="bLire">Demander une lecture</button>
+        <button class="discret" id="partager" type="button" data-t="bPartager">Copier le lien du thème</button>
         <button class="discret" id="bascule-cle" type="button" data-t="bCle">Clé d'API</button>
       </div>
     </div>
+
+    <p class="statut" id="note-lieu" style="max-width:38rem;margin:.6rem auto 0;text-align:center"></p>
 
     <div class="cle" id="panneau-cle">
       <p data-t="cleAvert">La clé reste sur cet appareil et part uniquement vers le fournisseur choisi. Sur un site public, n'utilisez qu'une clé que vous pouvez révoquer.</p>
@@ -257,6 +280,7 @@ footer{text-align:center;color:#57525f;font-size:.9rem;font-style:italic;padding
           </select>
         </label>
         <label class="champ-l"><span data-t="lCle">Clé</span><input type="password" id="t-cle" autocomplete="off" data-tp="phCle" placeholder="collez la clé"></label>
+        <label class="champ-l"><span data-t="lPhrase">Phrase de passe</span><input type="password" id="t-phrase" autocomplete="off" data-tp="phPhrase" placeholder="au moins 8 caractères"></label>
         <div class="agir">
           <button class="discret" id="garder-cle" type="button" data-t="bGarder">Enregistrer la clé</button>
           <button class="discret" id="oublier-cle" type="button" data-t="bOublier">Oublier toutes les clés</button>
@@ -268,6 +292,13 @@ footer{text-align:center;color:#57525f;font-size:.9rem;font-style:italic;padding
     <div class="resultat" id="resultat"></div>
     <div class="lecture" id="lecture" style="display:none"></div>
     <p class="statut" id="statut" style="text-align:center"></p>
+  </section>
+
+  <section class="graphe" id="graphe">
+    <p class="intro" data-t="grapheIntro">Chaque nœud est une notion, chaque trait une correspondance. Touchez un nœud pour ouvrir sa fiche.</p>
+    <div class="legende" id="legende"></div>
+    <canvas id="toile" role="img" aria-label="Graphe des correspondances"></canvas>
+    <p class="statut" id="statut-graphe" style="text-align:center"></p>
   </section>
 
   <article class="fiche" id="fiche" aria-live="polite"></article>
@@ -502,6 +533,54 @@ var safeStorage = {
     try { window.localStorage.removeItem(k); } catch (e) {}
   }
 };
+
+/* ——— Chiffrement des clés : AES-256-GCM, dérivation PBKDF2 ——— */
+var phraseSession = null;
+var ITERATIONS = 210000;
+
+function crypteDispo() {
+  return !!(window.crypto && window.crypto.subtle && window.TextEncoder);
+}
+function b64(buf) {
+  var b = new Uint8Array(buf), s = "", i;
+  for (i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+function deb64(t) {
+  var s = atob(t), b = new Uint8Array(s.length), i;
+  for (i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+  return b;
+}
+function deriver(phrase, sel) {
+  var enc = new TextEncoder();
+  return window.crypto.subtle.importKey("raw", enc.encode(phrase), "PBKDF2", false, ["deriveKey"])
+    .then(function (base) {
+      return window.crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: sel, iterations: ITERATIONS, hash: "SHA-256" },
+        base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    });
+}
+function chiffrer(texte, phrase) {
+  var sel = window.crypto.getRandomValues(new Uint8Array(16));
+  var iv = window.crypto.getRandomValues(new Uint8Array(12));
+  return deriver(phrase, sel).then(function (k) {
+    return window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, k, new TextEncoder().encode(texte));
+  }).then(function (ct) {
+    return JSON.stringify({ s: b64(sel), i: b64(iv), c: b64(ct) });
+  });
+}
+function dechiffrer(paquet, phrase) {
+  var o;
+  try { o = JSON.parse(paquet); } catch (e) { return Promise.reject(new Error("format")); }
+  if (!o || !o.s || !o.i || !o.c) return Promise.reject(new Error("format"));
+  return deriver(phrase, deb64(o.s)).then(function (k) {
+    return window.crypto.subtle.decrypt({ name: "AES-GCM", iv: deb64(o.i) }, k, deb64(o.c));
+  }).then(function (clair) {
+    return new TextDecoder().decode(clair);
+  });
+}
+function estChiffre(v) { return typeof v === "string" && v.indexOf('{"s":') === 0; }
+
 function sanitizeKey(s) {
   return String(s == null ? "" : s).replace(/[\s"'`]/g, "").replace(/[^\x21-\x7e]/g, "").slice(0, 200);
 }
@@ -537,6 +616,280 @@ function appeler(clef, fournisseur, messages, ok, ko) {
   x.ontimeout = function () { ko(f.nom + " n'a pas répondu dans le délai."); };
   x.onerror = function () { ko("Connexion à " + f.nom + " impossible."); };
   x.send(JSON.stringify({ model: f.modele, messages: messages, temperature: 0.7, max_tokens: 900 }));
+}
+
+
+
+
+/* ——— Thème partageable par l'URL ——— */
+function lienTheme() {
+  var v = document.getElementById("t-ville").value;
+  var p = ["d=" + encodeURIComponent(document.getElementById("t-date").value)];
+  if (document.getElementById("t-heure").value) p.push("h=" + encodeURIComponent(document.getElementById("t-heure").value));
+  if (document.getElementById("t-utc").value !== "") p.push("u=" + encodeURIComponent(document.getElementById("t-utc").value));
+  if (document.getElementById("t-lat").value !== "") p.push("la=" + encodeURIComponent(document.getElementById("t-lat").value));
+  if (document.getElementById("t-lon").value !== "") p.push("lo=" + encodeURIComponent(document.getElementById("t-lon").value));
+  if (v) p.push("v=" + encodeURIComponent(v));
+  return location.href.split("#")[0] + "#theme?" + p.join("&");
+}
+function appliquerLienTheme(requete) {
+  var parts = requete.split("&"), o = {}, i;
+  for (i = 0; i < parts.length; i++) {
+    var kv = parts[i].split("=");
+    if (kv[0]) o[kv[0]] = decodeURIComponent(kv[1] || "");
+  }
+  if (!o.d) return false;
+  document.getElementById("t-date").value = o.d;
+  document.getElementById("t-heure").value = o.h || "";
+  document.getElementById("t-utc").value = o.u || "";
+  document.getElementById("t-lat").value = o.la || "";
+  document.getElementById("t-lon").value = o.lo || "";
+  document.getElementById("t-ville").value = o.v || "";
+  vue("theme");
+  dernierTheme = calculerTheme();
+  afficherTheme(dernierTheme);
+  return true;
+}
+
+/* ——— Graphe de correspondances ——— */
+var G = { noeuds: [], liens: [], anim: 0, prete: false, survol: null, ratio: 1 };
+
+function couleurDomaine(d) {
+  var c = getComputedStyle(document.documentElement).getPropertyValue("--" + norm(d)).trim();
+  return c || "#c9a43f";
+}
+
+function preparerGraphe() {
+  var i, j, e, vus = {};
+  G.noeuds = [];
+  for (i = 0; i < DB.length; i++) {
+    e = DB[i];
+    G.noeuds.push({
+      e: e, x: Math.cos(i) * 140 + (Math.random() - .5) * 40, y: Math.sin(i * 1.7) * 140 + (Math.random() - .5) * 40,
+      vx: 0, vy: 0, c: couleurDomaine(e.d)
+    });
+  }
+  var idx = {};
+  for (i = 0; i < G.noeuds.length; i++) idx[G.noeuds[i].e.i] = i;
+  G.liens = [];
+  for (i = 0; i < DB.length; i++) {
+    for (j = 0; j < DB[i].c.length; j++) {
+      var a = i, b = idx[DB[i].c[j]];
+      if (b === undefined) continue;
+      var cle = Math.min(a, b) + "-" + Math.max(a, b);
+      if (vus[cle]) continue;
+      vus[cle] = 1;
+      G.liens.push({ a: a, b: b });
+    }
+  }
+  G.prete = true;
+}
+
+function pasSimulation() {
+  var n = G.noeuds, i, j, dx, dy, d2, d, f;
+  for (i = 0; i < n.length; i++) {
+    for (j = i + 1; j < n.length; j++) {
+      dx = n[j].x - n[i].x; dy = n[j].y - n[i].y;
+      d2 = dx * dx + dy * dy || 0.01;
+      if (d2 > 90000) continue;
+      f = 1400 / d2;
+      d = Math.sqrt(d2);
+      dx /= d; dy /= d;
+      n[i].vx -= dx * f; n[i].vy -= dy * f;
+      n[j].vx += dx * f; n[j].vy += dy * f;
+    }
+  }
+  for (i = 0; i < G.liens.length; i++) {
+    var a = n[G.liens[i].a], b = n[G.liens[i].b];
+    dx = b.x - a.x; dy = b.y - a.y;
+    d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+    f = (d - 70) * 0.012;
+    dx = dx / d * f; dy = dy / d * f;
+    a.vx += dx; a.vy += dy; b.vx -= dx; b.vy -= dy;
+  }
+  var energie = 0;
+  for (i = 0; i < n.length; i++) {
+    n[i].vx -= n[i].x * 0.0016; n[i].vy -= n[i].y * 0.0016;   /* rappel vers le centre */
+    n[i].vx *= 0.82; n[i].vy *= 0.82;
+    n[i].x += n[i].vx; n[i].y += n[i].vy;
+    energie += n[i].vx * n[i].vx + n[i].vy * n[i].vy;
+  }
+  return energie / n.length;
+}
+
+function dessinerGraphe() {
+  var c = document.getElementById("toile"), ctx = c.getContext("2d"), i;
+  var L = c.width / G.ratio, H = c.height / G.ratio;
+  ctx.setTransform(G.ratio, 0, 0, G.ratio, 0, 0);
+  ctx.clearRect(0, 0, L, H);
+  var ech = Math.min(L, H) / 420, cx = L / 2, cy = H / 2;
+  function px(n) { return cx + n.x * ech; }
+  function py(n) { return cy + n.y * ech; }
+
+  ctx.lineWidth = 1;
+  for (i = 0; i < G.liens.length; i++) {
+    var a = G.noeuds[G.liens[i].a], b = G.noeuds[G.liens[i].b];
+    var actif = G.survol && (a === G.survol || b === G.survol);
+    ctx.strokeStyle = actif ? a.c : "rgba(230,223,208,0.10)";
+    ctx.beginPath(); ctx.moveTo(px(a), py(a)); ctx.lineTo(px(b), py(b)); ctx.stroke();
+  }
+  for (i = 0; i < G.noeuds.length; i++) {
+    var n = G.noeuds[i], r = G.survol === n ? 7 : 4.5;
+    ctx.fillStyle = n.c;
+    ctx.globalAlpha = G.survol && G.survol !== n ? 0.55 : 1;
+    ctx.beginPath(); ctx.arc(px(n), py(n), r, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  if (G.survol) {
+    ctx.font = '500 15px "Cinzel", Georgia, serif';
+    ctx.textAlign = "center";
+    var t = TR(G.survol.e, "n"), x = px(G.survol), y = py(G.survol) - 14;
+    var w = ctx.measureText(t).width;
+    ctx.fillStyle = "rgba(10,9,16,.88)";
+    ctx.fillRect(x - w / 2 - 6, y - 15, w + 12, 21);
+    ctx.fillStyle = "#e6dfd0";
+    ctx.fillText(t, x, y);
+  }
+}
+
+function dimensionnerToile() {
+  var c = document.getElementById("toile");
+  G.ratio = window.devicePixelRatio || 1;
+  c.width = Math.round(c.clientWidth * G.ratio);
+  c.height = Math.round(c.clientHeight * G.ratio);
+}
+
+function boucleGraphe() {
+  var reduit = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var tours = reduit ? 240 : 1;
+  var e = 0, k;
+  for (k = 0; k < tours; k++) e = pasSimulation();
+  dessinerGraphe();
+  if (e > 0.02 && G.anim < 900) { G.anim++; requestAnimationFrame(boucleGraphe); }
+  else { document.getElementById("statut-graphe").textContent = F("sGraphe", { n: G.noeuds.length, l: G.liens.length }); }
+}
+
+function noeudSous(cx, cy) {
+  var c = document.getElementById("toile"), r = c.getBoundingClientRect();
+  var L = r.width, H = r.height, ech = Math.min(L, H) / 420;
+  var x = cx - r.left, y = cy - r.top, best = null, bd = 18 * 18, i;
+  for (i = 0; i < G.noeuds.length; i++) {
+    var dx = (L / 2 + G.noeuds[i].x * ech) - x, dy = (H / 2 + G.noeuds[i].y * ech) - y;
+    var d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = G.noeuds[i]; }
+  }
+  return best;
+}
+
+function lancerGraphe() {
+  if (!G.prete) preparerGraphe();
+  dimensionnerToile();
+  G.anim = 0;
+  boucleGraphe();
+  var lg = document.getElementById("legende");
+  lg.innerHTML = "";
+  var ordre = ["Alchimie", "Astrologie", "Kabbale", "Tarot"];
+  for (var i = 0; i < ordre.length; i++) {
+    var sp = el("span"), pt = el("i");
+    pt.style.background = couleurDomaine(ordre[i]);
+    sp.appendChild(pt);
+    sp.appendChild(document.createTextNode(DOM(ordre[i])));
+    lg.appendChild(sp);
+  }
+}
+
+function brancherGraphe() {
+  var c = document.getElementById("toile");
+  c.addEventListener("pointermove", function (ev) {
+    var n = noeudSous(ev.clientX, ev.clientY);
+    if (n !== G.survol) { G.survol = n; dessinerGraphe(); }
+  });
+  c.addEventListener("pointerleave", function () { G.survol = null; dessinerGraphe(); });
+  c.addEventListener("click", function (ev) {
+    var n = noeudSous(ev.clientX, ev.clientY);
+    if (n) location.hash = n.e.i;
+  });
+  window.addEventListener("resize", function () {
+    if (document.body.getAttribute("data-vue") !== "graphe") return;
+    dimensionnerToile(); dessinerGraphe();
+  });
+}
+
+/* ——— Lieux et décalages horaires ———
+   Le décalage proposé reste modifiable : c'est une aide à la saisie, pas une autorité. */
+var ZONES = {
+  fr:{ base:1, dst:"eu" }, uk:{ base:0, dst:"eu" }, est:{ base:2, dst:"eu" },
+  fixe0:{ base:0, dst:"non" }, fixe1:{ base:1, dst:"non" },
+  ny:{ base:-5, dst:"us" }, la:{ base:-8, dst:"us" }, mtl:{ base:-5, dst:"us" }
+};
+var VILLES = [
+  ["Paris",48.8566,2.3522,"fr"],["Marseille",43.2965,5.3698,"fr"],["Lyon",45.7640,4.8357,"fr"],
+  ["Toulouse",43.6047,1.4442,"fr"],["Nice",43.7102,7.2620,"fr"],["Nantes",47.2184,-1.5536,"fr"],
+  ["Montpellier",43.6108,3.8767,"fr"],["Strasbourg",48.5734,7.7521,"fr"],["Bordeaux",44.8378,-0.5792,"fr"],
+  ["Lille",50.6292,3.0573,"fr"],["Rennes",48.1173,-1.6778,"fr"],["Reims",49.2583,4.0317,"fr"],
+  ["Saint-Étienne",45.4397,4.3872,"fr"],["Le Havre",49.4944,0.1079,"fr"],["Toulon",43.1242,5.9280,"fr"],
+  ["Grenoble",45.1885,5.7245,"fr"],["Dijon",47.3220,5.0415,"fr"],["Angers",47.4784,-0.5632,"fr"],
+  ["Nîmes",43.8367,4.3601,"fr"],["Villeurbanne",45.7719,4.8902,"fr"],["Clermont-Ferrand",45.7772,3.0870,"fr"],
+  ["Le Mans",48.0061,0.1996,"fr"],["Aix-en-Provence",43.5297,5.4474,"fr"],["Brest",48.3904,-4.4861,"fr"],
+  ["Tours",47.3941,0.6848,"fr"],["Amiens",49.8941,2.2958,"fr"],["Limoges",45.8336,1.2611,"fr"],
+  ["Annecy",45.8992,6.1294,"fr"],["Perpignan",42.6887,2.8948,"fr"],["Besançon",47.2378,6.0241,"fr"],
+  ["Metz",49.1193,6.1757,"fr"],["Orléans",47.9029,1.9093,"fr"],["Rouen",49.4432,1.0999,"fr"],
+  ["Mulhouse",47.7508,7.3359,"fr"],["Caen",49.1829,-0.3707,"fr"],["Nancy",48.6921,6.1844,"fr"],
+  ["Argenteuil",48.9474,2.2469,"fr"],["Montreuil",48.8638,2.4485,"fr"],["Roubaix",50.6942,3.1746,"fr"],
+  ["Avignon",43.9493,4.8055,"fr"],["Poitiers",46.5802,0.3404,"fr"],["La Rochelle",46.1591,-1.1520,"fr"],
+  ["Pau",43.2951,-0.3708,"fr"],["Bayonne",43.4933,-1.4748,"fr"],["Ajaccio",41.9192,8.7386,"fr"],
+  ["Bastia",42.7028,9.4509,"fr"],["Chambéry",45.5646,5.9178,"fr"],["Valence",44.9334,4.8924,"fr"],
+  ["Quimper",47.9960,-4.0977,"fr"],["Vannes",47.6582,-2.7608,"fr"],["Saint-Nazaire",47.2734,-2.2138,"fr"],
+  ["La Meilleraye-de-Bretagne",47.5372,-1.4111,"fr"],["Châteaubriant",47.7167,-1.3761,"fr"],
+  ["Laval",48.0698,-0.7669,"fr"],["Cholet",47.0594,-0.8794,"fr"],["Niort",46.3239,-0.4648,"fr"],
+  ["Fort-de-France",14.6161,-61.0588,"fixe0"],["Pointe-à-Pitre",16.2412,-61.5340,"fixe0"],
+  ["Cayenne",4.9224,-52.3135,"fixe0"],["Saint-Denis (La Réunion)",-20.8789,55.4481,"fixe1"],
+  ["Papeete",-17.5516,-149.5585,"fixe0"],["Nouméa",-22.2758,166.4580,"fixe1"],
+  ["Bruxelles",50.8503,4.3517,"fr"],["Genève",46.2044,6.1432,"fr"],["Lausanne",46.5197,6.6323,"fr"],
+  ["Luxembourg",49.6116,6.1319,"fr"],["Amsterdam",52.3676,4.9041,"fr"],["Berlin",52.5200,13.4050,"fr"],
+  ["Munich",48.1351,11.5820,"fr"],["Vienne",48.2082,16.3738,"fr"],["Rome",41.9028,12.4964,"fr"],
+  ["Milan",45.4642,9.1900,"fr"],["Madrid",40.4168,-3.7038,"fr"],["Barcelone",41.3874,2.1686,"fr"],
+  ["Varsovie",52.2297,21.0122,"fr"],["Prague",50.0755,14.4378,"fr"],["Stockholm",59.3293,18.0686,"fr"],
+  ["Oslo",59.9139,10.7522,"fr"],["Copenhague",55.6761,12.5683,"fr"],["Budapest",47.4979,19.0402,"fr"],
+  ["Londres",51.5074,-0.1278,"uk"],["Dublin",53.3498,-6.2603,"uk"],["Lisbonne",38.7223,-9.1393,"uk"],
+  ["Athènes",37.9838,23.7275,"est"],["Helsinki",60.1699,24.9384,"est"],["Bucarest",44.4268,26.1025,"est"],
+  ["Alger",36.7538,3.0588,"fixe1"],["Tunis",36.8065,10.1815,"fixe1"],["Casablanca",33.5731,-7.5898,"fixe1"],
+  ["Dakar",14.7167,-17.4677,"fixe0"],["Abidjan",5.3600,-4.0083,"fixe0"],["Yaoundé",3.8480,11.5021,"fixe1"],
+  ["Montréal",45.5017,-73.5673,"mtl"],["New York",40.7128,-74.0060,"ny"],["Los Angeles",34.0522,-118.2437,"la"]
+];
+
+function dimancheFin(an, mois) {            /* dernier dimanche du mois, en date UTC */
+  var d = new Date(Date.UTC(an, mois, 0));  /* dernier jour du mois (mois 1-12) */
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
+/* Dates officielles françaises 1976-1980, avant l'harmonisation européenne */
+var ETE_76_80 = { 1976:[[3,28],[9,26]], 1977:[[4,3],[9,25]], 1978:[[4,2],[10,1]], 1979:[[4,1],[9,30]], 1980:[[4,6],[9,28]] };
+
+function heureEte(an, mo, jo, regle) {
+  var t = Date.UTC(an, mo - 1, jo);
+  if (regle === "us") {                     /* approximation : mars-novembre depuis 2007 */
+    if (an < 1970) return false;
+    return mo > 3 && mo < 11;
+  }
+  if (an < 1976) return false;              /* la France n'a pas d'heure d'été de 1945 à 1975 */
+  if (ETE_76_80[an]) {
+    var a = ETE_76_80[an];
+    return t >= Date.UTC(an, a[0][0] - 1, a[0][1]) && t < Date.UTC(an, a[1][0] - 1, a[1][1]);
+  }
+  var finMois = an >= 1996 ? 10 : 9;
+  return t >= dimancheFin(an, 3).getTime() && t < dimancheFin(an, finMois).getTime();
+}
+
+function decalagePropose(cle, an, mo, jo) {
+  var z = ZONES[cle] || ZONES.fr;
+  if (z.dst === "non") return z.base;
+  return z.base + (heureEte(an, mo, jo, z.dst) ? 1 : 0);
+}
+function chercherVille(nom) {
+  var n = norm(nom), i;
+  for (i = 0; i < VILLES.length; i++) if (norm(VILLES[i][0]) === n) return VILLES[i];
+  return null;
 }
 
 /* ——— Thème ——— */
@@ -699,6 +1052,38 @@ function demanderLecture() {
     document.getElementById("panneau-cle").className = "cle on";
     return;
   }
+  var chiffrees = false, i2;
+  for (i2 = 0; i2 < dispo.length; i2++) if (estChiffre(dispo[i2].c)) chiffrees = true;
+  if (chiffrees) {
+    var ph = phraseSession || document.getElementById("t-phrase").value;
+    if (!ph) {
+      document.getElementById("panneau-cle").className = "cle on";
+      statut.textContent = T("sPhraseRequise");
+      return;
+    }
+    var attente = [], k2;
+    for (k2 = 0; k2 < dispo.length; k2++) {
+      attente.push(estChiffre(dispo[k2].c)
+        ? dechiffrer(dispo[k2].c, ph)
+        : Promise.resolve(dispo[k2].c));
+    }
+    statut.textContent = T("sDechiffrement");
+    Promise.all(attente).then(function (claires) {
+      phraseSession = ph;
+      document.getElementById("t-phrase").value = "";
+      for (var z = 0; z < dispo.length; z++) dispo[z].c = claires[z];
+      lancerAppels(dispo);
+    }).catch(function () {
+      phraseSession = null;
+      statut.textContent = T("sPhraseFausse");
+    });
+    return;
+  }
+  lancerAppels(dispo);
+}
+
+function lancerAppels(dispo) {
+  var statut = document.getElementById("statut"), zone = document.getElementById("lecture");
   var t = dernierTheme;
   var faits = [
     "Chemin de vie : " + t.chemin,
@@ -733,10 +1118,45 @@ function demanderLecture() {
   suivant();
 }
 
+function remplirVilles() {
+  var dl = document.getElementById("villes"), i, o;
+  for (i = 0; i < VILLES.length; i++) {
+    o = document.createElement("option");
+    o.value = VILLES[i][0];
+    dl.appendChild(o);
+  }
+}
+
+function appliquerVille() {
+  var v = chercherVille(document.getElementById("t-ville").value);
+  var note = document.getElementById("note-lieu");
+  if (!v) { note.textContent = document.getElementById("t-ville").value ? T("sVilleInconnue") : ""; return; }
+  document.getElementById("t-lat").value = v[1];
+  document.getElementById("t-lon").value = v[2];
+  var d = document.getElementById("t-date").value;
+  if (d) {
+    var p = d.split("-");
+    var dec = decalagePropose(v[3], parseInt(p[0], 10), parseInt(p[1], 10), parseInt(p[2], 10));
+    document.getElementById("t-utc").value = dec;
+    note.textContent = F("sDecalage", { v: v[0], d: (dec >= 0 ? "+" : "") + dec });
+  } else {
+    note.textContent = T("sDateDabord");
+  }
+}
+
 function brancherTheme() {
+  remplirVilles();
+  document.getElementById("t-ville").addEventListener("change", appliquerVille);
+  document.getElementById("t-ville").addEventListener("input", appliquerVille);
+  document.getElementById("t-date").addEventListener("change", function () {
+    if (document.getElementById("t-ville").value) appliquerVille();
+  });
   var ongIndex = document.getElementById("ong-index"), ongTheme = document.getElementById("ong-theme");
   ongIndex.addEventListener("click", function () { location.hash = ""; vue("index"); });
   ongTheme.addEventListener("click", function () { location.hash = ""; vue("theme"); });
+  document.getElementById("ong-graphe").addEventListener("click", function () {
+    location.hash = ""; vue("graphe"); lancerGraphe();
+  });
 
   document.getElementById("calculer").addEventListener("click", function () {
     dernierTheme = calculerTheme();
@@ -745,6 +1165,18 @@ function brancherTheme() {
     document.getElementById("statut").textContent = "";
   });
   document.getElementById("lire").addEventListener("click", demanderLecture);
+  document.getElementById("partager").addEventListener("click", function () {
+    var st = document.getElementById("statut");
+    if (!document.getElementById("t-date").value) { st.textContent = T("sDate"); return; }
+    var lien = lienTheme();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lien).then(function () {
+        st.textContent = T("sLienCopie");
+      }).catch(function () { st.textContent = T("sLienEchec") + " " + lien; });
+    } else {
+      st.textContent = T("sLienEchec") + " " + lien;
+    }
+  });
   document.getElementById("bascule-cle").addEventListener("click", function () {
     var p = document.getElementById("panneau-cle");
     p.className = p.className.indexOf("on") < 0 ? "cle on" : "cle";
@@ -752,11 +1184,23 @@ function brancherTheme() {
   document.getElementById("garder-cle").addEventListener("click", function () {
     var f = document.getElementById("t-fournisseur").value;
     var c = sanitizeKey(document.getElementById("t-cle").value);
+    var ph = document.getElementById("t-phrase").value;
     var st = document.getElementById("statut-cle");
     if (c.length < 16) { st.textContent = T("sCourte"); return; }
-    safeStorage.ecrire("cle-" + f, c);
-    document.getElementById("t-cle").value = "";
-    st.textContent = F("sGardee", { f: FOURNISSEURS[f].nom });
+    if (!crypteDispo()) {
+      safeStorage.ecrire("cle-" + f, c);
+      document.getElementById("t-cle").value = "";
+      st.textContent = T("sPasDeCrypto");
+      return;
+    }
+    if (ph.length < 8) { st.textContent = T("sPhraseCourte"); return; }
+    st.textContent = T("sChiffrement");
+    chiffrer(c, ph).then(function (paquet) {
+      safeStorage.ecrire("cle-" + f, paquet);
+      phraseSession = ph;
+      document.getElementById("t-cle").value = "";
+      st.textContent = F("sGardeeChiffree", { f: FOURNISSEURS[f].nom });
+    }).catch(function () { st.textContent = T("sEchecChiffrement"); });
   });
   document.getElementById("oublier-cle").addEventListener("click", function () {
     for (var i = 0; i < ORDRE.length; i++) safeStorage.effacer("cle-" + ORDRE[i]);
@@ -766,10 +1210,10 @@ function brancherTheme() {
 
 function vue(v) {
   document.body.setAttribute("data-vue", v);
-  var oi = document.getElementById("ong-index"), ot = document.getElementById("ong-theme");
-  if (oi && ot) {
-    oi.setAttribute("aria-selected", v === "index" ? "true" : "false");
-    ot.setAttribute("aria-selected", v === "theme" ? "true" : "false");
+  var ids = { index: "ong-index", theme: "ong-theme", graphe: "ong-graphe" };
+  for (var k in ids) {
+    var b = document.getElementById(ids[k]);
+    if (b) b.setAttribute("aria-selected", k === v ? "true" : "false");
   }
 }
 
@@ -857,14 +1301,32 @@ fr:{
  entree:"entrée", entrees:"entrées",
  vide:"L'Abîme ne répond rien à cette requête.",
  retour:"← Retour à l'index",
- ongletIndex:"Le grimoire", ongletTheme:"Thème et nombres",
+ ongletIndex:"Le grimoire", ongletTheme:"Thème et nombres", ongletGraphe:"Le graphe",
+ grapheIntro:"Chaque nœud est une notion, chaque trait une correspondance. Touchez un nœud pour ouvrir sa fiche.",
+ sGraphe:"{n} notions, {l} correspondances.",
  themeIntro:"Les nombres et les positions sont calculés ici même, sans réseau. Seule la lecture interprétée fait appel à un modèle, et seulement si vous fournissez une clé.",
+ lVille:"Lieu de naissance", phVille:"Nantes, Berlin, Montréal…",
+ sVilleInconnue:"Lieu absent de la liste : saisissez la latitude, la longitude et le décalage à la main.",
+ sDecalage:"{v} : décalage {d} h proposé d'après la date. Corrigez-le si vous savez qu'il diffère.",
+ sDateDabord:"Renseignez la date pour que le décalage horaire soit proposé.",
  lDate:"Date de naissance", lHeure:"Heure locale (facultative)", lUtc:"Décalage UTC à la naissance",
  lLat:"Latitude (facultative)", lLon:"Longitude est (facultative)",
  bCalculer:"Calculer", bLire:"Demander une lecture", bCle:"Clé d'API",
  cleAvert:"La clé reste sur cet appareil et part uniquement vers le fournisseur choisi. Sur un site public, n'utilisez qu'une clé que vous pouvez révoquer.",
  lFournisseur:"Fournisseur", lCle:"Clé", phCle:"collez la clé",
  bGarder:"Enregistrer la clé", bOublier:"Oublier toutes les clés",
+ lPhrase:"Phrase de passe", phPhrase:"au moins 8 caractères",
+ sPhraseCourte:"Phrase de passe trop courte : huit caractères au minimum.",
+ sChiffrement:"Chiffrement en cours…",
+ sGardeeChiffree:"Clé {f} chiffrée et enregistrée sur cet appareil.",
+ sEchecChiffrement:"Le chiffrement a échoué : la clé n'a pas été enregistrée.",
+ sPasDeCrypto:"Ce navigateur ne fournit pas WebCrypto : la clé a été enregistrée en clair.",
+ sPhraseRequise:"Saisissez votre phrase de passe pour déverrouiller la clé.",
+ sPhraseFausse:"Phrase de passe incorrecte, ou clé corrompue.",
+ sDechiffrement:"Déverrouillage…",
+ bPartager:"Copier le lien du thème", sLienCopie:"Lien copié. Il rouvre ce thème tel quel.",
+ sLienEchec:"Copie impossible : voici le lien, à sélectionner à la main.",
+ majDispo:"Nouvelle version disponible.", bRecharger:"Recharger",
  credit:"Création : Lyssa Jung et Niko — Studio Niko Design.",
  source:"Correspondances d'après la tradition hermétique occidentale.",
  bChemin:"Chemin de vie", dChemin:"Réduction du jour, du mois et de l'année, les maîtres nombres 11 et 22 conservés.",
@@ -900,14 +1362,32 @@ en:{
  entree:"entry", entrees:"entries",
  vide:"The Abyss returns nothing for this query.",
  retour:"← Back to the index",
- ongletIndex:"The grimoire", ongletTheme:"Chart and numbers",
+ ongletIndex:"The grimoire", ongletTheme:"Chart and numbers", ongletGraphe:"The graph",
+ grapheIntro:"Each node is a notion, each line a correspondence. Tap a node to open its entry.",
+ sGraphe:"{n} notions, {l} correspondences.",
  themeIntro:"The numbers and positions are worked out here, with no network. Only the interpreted reading calls on a model, and only if you supply a key.",
+ lVille:"Place of birth", phVille:"Nantes, Berlin, Montreal…",
+ sVilleInconnue:"Place not in the list: enter latitude, longitude and offset by hand.",
+ sDecalage:"{v}: offset {d} h suggested from the date. Correct it if you know it differs.",
+ sDateDabord:"Enter the date so the offset can be suggested.",
  lDate:"Date of birth", lHeure:"Local time (optional)", lUtc:"UTC offset at birth",
  lLat:"Latitude (optional)", lLon:"East longitude (optional)",
  bCalculer:"Calculate", bLire:"Ask for a reading", bCle:"API key",
  cleAvert:"The key stays on this device and goes only to the provider you choose. On a public site, use a key you can revoke.",
  lFournisseur:"Provider", lCle:"Key", phCle:"paste the key",
  bGarder:"Save the key", bOublier:"Forget every key",
+ lPhrase:"Passphrase", phPhrase:"at least 8 characters",
+ sPhraseCourte:"Passphrase too short: eight characters minimum.",
+ sChiffrement:"Encrypting…",
+ sGardeeChiffree:"{f} key encrypted and saved on this device.",
+ sEchecChiffrement:"Encryption failed: the key was not saved.",
+ sPasDeCrypto:"This browser has no WebCrypto: the key was saved in the clear.",
+ sPhraseRequise:"Enter your passphrase to unlock the key.",
+ sPhraseFausse:"Wrong passphrase, or corrupted key.",
+ sDechiffrement:"Unlocking…",
+ bPartager:"Copy the chart link", sLienCopie:"Link copied. It reopens this chart as it stands.",
+ sLienEchec:"Copy failed: here is the link, select it by hand.",
+ majDispo:"A new version is available.", bRecharger:"Reload",
  credit:"Created by Lyssa Jung and Niko — Studio Niko Design.",
  source:"Correspondences after the Western hermetic tradition.",
  bChemin:"Life path", dChemin:"Day, month and year reduced separately, master numbers 11 and 22 kept.",
@@ -1096,7 +1576,9 @@ function afficherFiche(id){
 }
 
 function router(){
-  var id=location.hash.replace(/^#\/?/,"");
+  var brut=location.hash.replace(/^#\/?/,"");
+  if(brut.indexOf("theme?")===0){ if(appliquerLienTheme(brut.slice(6))) return; }
+  var id=brut;
   if(id&&byId[id]){
     vue("fiche");
     afficherFiche(id);
@@ -1131,6 +1613,7 @@ document.addEventListener("DOMContentLoaded",function(){
   preparer();
   construireVoies();
   brancherTheme();
+  brancherGraphe();
   var selLangue = document.getElementById("langue");
   selLangue.value = LANGUE;
   selLangue.addEventListener("change", function () { changerLangue(selLangue.value); });
@@ -1169,10 +1652,43 @@ document.addEventListener("DOMContentLoaded",function(){
   window.addEventListener("hashchange",router);
 });
 
+function bandeauMaj(sw){
+  if(document.getElementById("bandeau-maj"))return;
+  var b=document.createElement("div");
+  b.id="bandeau-maj";
+  b.className="bandeau";
+  b.appendChild(document.createTextNode(T("majDispo")+" "));
+  var a=document.createElement("button");
+  a.type="button";
+  a.className="discret";
+  a.textContent=T("bRecharger");
+  a.addEventListener("click",function(){
+    if(sw)sw.postMessage({action:"passer"});
+    setTimeout(function(){location.reload();},120);
+  });
+  b.appendChild(a);
+  document.body.appendChild(b);
+}
+
 function enregistrerSW(){
   if(!("serviceWorker" in navigator))return;
   if(location.protocol!=="https:"&&location.hostname!=="localhost")return;
-  navigator.serviceWorker.register("sw.js").catch(function(){});
+  navigator.serviceWorker.register("sw.js").then(function(reg){
+    if(reg.waiting)bandeauMaj(reg.waiting);
+    reg.addEventListener("updatefound",function(){
+      var nouveau=reg.installing;
+      if(!nouveau)return;
+      nouveau.addEventListener("statechange",function(){
+        if(nouveau.state==="installed"&&navigator.serviceWorker.controller)bandeauMaj(nouveau);
+      });
+    });
+  }).catch(function(){});
+  var recharge=false;
+  navigator.serviceWorker.addEventListener("controllerchange",function(){
+    if(recharge)return;
+    recharge=true;
+    location.reload();
+  });
 }
 </script>
 </body>
